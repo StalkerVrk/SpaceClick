@@ -114,93 +114,105 @@
         });
       };
 
-      document.body.appendChild(script);
+    //   document.body.appendChild(script);
 
-           // ========== Telegram Integration Start ========== //
+    
+    // // 1. Глобальная функция для Unity
     //   window.SendToTelegram = function(score) {
-    //   console.log("[TelegramBridge] Received score from Unity:", score);
-    //   if (typeof TelegramGameProxy !== 'undefined') {
-    //     TelegramGameProxy.receiveEvent('share_score', score.toString());
-    //   } else {
-    //     console.warn("TelegramGameProxy not available - running in standalone mode");
-    //   }
-    // };
-
-    // var TelegramGameProxy = {
-    //   init: function() {
-    //     if (typeof Telegram !== 'undefined' && Telegram.WebApp) {
-    //       Telegram.WebApp.ready();
-    //       Telegram.WebApp.expand();
-    //       console.log("[TelegramBridge] WebApp initialized");
-    //     }
-    //   },
-    //   receiveEvent: function(type, data) {
-    //     if (type === 'share_score') {
-    //       try {
-    //         if (typeof Telegram !== 'undefined' && Telegram.WebApp.sendData) {
-    //           var payload = JSON.stringify({
-    //             action: 'set_score',
-    //             score: data,
-    //             timestamp: Date.now()
-    //           });
-    //           Telegram.WebApp.sendData(payload);
-    //           console.log("[TelegramBridge] Score sent:", payload);
-    //           Telegram.WebApp.close();
-    //         }
-    //       } catch (e) {
-    //         console.error("[TelegramBridge] Error sending data:", e);
+    //       console.log("Received score from Unity:", score);
+    //       if (typeof TelegramGameProxy !== 'undefined') {
+    //           TelegramGameProxy.receiveEvent('share_score', score.toString());
     //       }
-    //     }
-    //   }
-    // };
+    //   };
 
-    // // Инициализация при полной загрузке страницы
-    // document.addEventListener('DOMContentLoaded', function() {
-    //   TelegramGameProxy.init();
-      
-    //   // Режим тестирования вне Telegram
-    //   if (typeof Telegram === 'undefined') {
-    //     console.info("[TelegramBridge] Running in test mode");
-    //     window.Telegram = {
-    //       WebApp: {
-    //         ready: function() { console.log("[TelegramBridge] Simulated ready()"); },
-    //         sendData: function(data) { console.log("[TelegramBridge] Simulated sendData:", data); },
-    //         close: function() { console.log("[TelegramBridge] Simulated close()"); },
-    //         expand: function() { console.log("[TelegramBridge] Simulated expand()"); }
+    //   // 2. Инициализация Telegram API
+    //   var TelegramGameProxy = {
+    //       init: function() {
+    //           if (typeof Telegram !== 'undefined') {
+    //               Telegram.WebApp.ready();
+    //               Telegram.WebApp.expand();
+    //           }
+    //       },
+    //       receiveEvent: function(type, data) {
+    //           if (type === 'share_score' && Telegram.WebApp.sendData) {
+    //               Telegram.WebApp.sendData(JSON.stringify({
+    //                   action: 'set_score',
+    //                   score: data
+    //               }));
+    //               Telegram.WebApp.close();
+    //           }
     //       }
-    //     };
-    //   }
-    // });
-    // // ========== Telegram Integration End ========== //
-    // 1. Глобальная функция для Unity
+    //   };
+
+    //   // 3. Инициализация при загрузке
+    //   document.addEventListener('DOMContentLoaded', TelegramGameProxy.init);
+
+          // Telegram Integration Start
+          window.TelegramGameProxy = {
+        init: function() {
+          if (typeof Telegram !== 'undefined') {
+            try {
+              Telegram.WebApp.ready();
+              Telegram.WebApp.expand();
+              console.log("Telegram WebApp initialized");
+            } catch (e) {
+              console.error("Telegram init error:", e);
+            }
+          }
+        },
+        handleScore: function(score) {
+          if (typeof Telegram !== 'undefined' && Telegram.WebApp.sendData) {
+            try {
+              Telegram.WebApp.sendData(JSON.stringify({
+                action: 'set_score',
+                score: score,
+                timestamp: Date.now()
+              }));
+              console.log("Score sent to Telegram:", score);
+              return true;
+            } catch (e) {
+              console.error("Send score error:", e);
+              return false;
+            }
+          }
+          return false;
+        }
+      };
+
+      // Global function for Unity
       window.SendToTelegram = function(score) {
-          console.log("Received score from Unity:", score);
-          if (typeof TelegramGameProxy !== 'undefined') {
-              TelegramGameProxy.receiveEvent('share_score', score.toString());
-          }
+        console.log("Unity -> JS:", score);
+        if (!window.TelegramGameProxy.handleScore(score)) {
+          console.warn("Failed to send score, fallback to localStorage");
+          localStorage.setItem('lastScore', score);
+        }
       };
 
-      // 2. Инициализация Telegram API
-      var TelegramGameProxy = {
-          init: function() {
-              if (typeof Telegram !== 'undefined') {
-                  Telegram.WebApp.ready();
-                  Telegram.WebApp.expand();
-              }
-          },
-          receiveEvent: function(type, data) {
-              if (type === 'share_score' && Telegram.WebApp.sendData) {
-                  Telegram.WebApp.sendData(JSON.stringify({
-                      action: 'set_score',
-                      score: data
-                  }));
-                  Telegram.WebApp.close();
-              }
-          }
-      };
+      // Initialize Telegram when DOM is ready
+      document.addEventListener('DOMContentLoaded', function() {
+        window.TelegramGameProxy.init();
+      });
 
-      // 3. Инициализация при загрузке
-      document.addEventListener('DOMContentLoaded', TelegramGameProxy.init);
+      // Unity Loader Initialization
+      loadingBar.style.display = "block";
+      var script = document.createElement("script");
+      script.src = loaderUrl;
+      script.onload = function() {
+        createUnityInstance(canvas, config, function(progress) {
+          progressBarFull.style.width = 100 * progress + "%";
+        }).then(function(unityInstance) {
+          loadingBar.style.display = "none";
+          fullscreenButton.onclick = function() {
+            unityInstance.SetFullscreen(1);
+          };
+          
+          // For debugging
+          window.unityInstance = unityInstance;
+        }).catch(function(message) {
+          alert(message);
+        });
+      };
+      document.body.appendChild(script);
     </script>
   </body>
 </html>
