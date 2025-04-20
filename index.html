@@ -89,7 +89,7 @@
         // performance, uncomment the following line:
         // config.devicePixelRatio = 1;
 
-        unityShowBanner('WebGL builds are not supported on mobile devices.');
+        // unityShowBanner('WebGL builds are not supported on mobile devices.');
       } else {
         // Desktop style: Render the game canvas in a window that can be maximized to fullscreen:
 
@@ -113,7 +113,65 @@
           alert(message);
         });
       };
+
       document.body.appendChild(script);
+
+           // ========== Telegram Integration Start ========== //
+      window.SendToTelegram = function(score) {
+      console.log("[TelegramBridge] Received score from Unity:", score);
+      if (typeof TelegramGameProxy !== 'undefined') {
+        TelegramGameProxy.receiveEvent('share_score', score.toString());
+      } else {
+        console.warn("TelegramGameProxy not available - running in standalone mode");
+      }
+    };
+
+    var TelegramGameProxy = {
+      init: function() {
+        if (typeof Telegram !== 'undefined' && Telegram.WebApp) {
+          Telegram.WebApp.ready();
+          Telegram.WebApp.expand();
+          console.log("[TelegramBridge] WebApp initialized");
+        }
+      },
+      receiveEvent: function(type, data) {
+        if (type === 'share_score') {
+          try {
+            if (typeof Telegram !== 'undefined' && Telegram.WebApp.sendData) {
+              var payload = JSON.stringify({
+                action: 'set_score',
+                score: data,
+                timestamp: Date.now()
+              });
+              Telegram.WebApp.sendData(payload);
+              console.log("[TelegramBridge] Score sent:", payload);
+              Telegram.WebApp.close();
+            }
+          } catch (e) {
+            console.error("[TelegramBridge] Error sending data:", e);
+          }
+        }
+      }
+    };
+
+    // Инициализация при полной загрузке страницы
+    document.addEventListener('DOMContentLoaded', function() {
+      TelegramGameProxy.init();
+      
+      // Режим тестирования вне Telegram
+      if (typeof Telegram === 'undefined') {
+        console.info("[TelegramBridge] Running in test mode");
+        window.Telegram = {
+          WebApp: {
+            ready: function() { console.log("[TelegramBridge] Simulated ready()"); },
+            sendData: function(data) { console.log("[TelegramBridge] Simulated sendData:", data); },
+            close: function() { console.log("[TelegramBridge] Simulated close()"); },
+            expand: function() { console.log("[TelegramBridge] Simulated expand()"); }
+          }
+        };
+      }
+    });
+    // ========== Telegram Integration End ========== //
     </script>
   </body>
 </html>
