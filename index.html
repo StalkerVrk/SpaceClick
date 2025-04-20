@@ -148,14 +148,17 @@
     //   document.addEventListener('DOMContentLoaded', TelegramGameProxy.init);
 
           // Telegram Integration Start
-          window.TelegramGameProxy = {
+      window.TelegramGameProxy = {
         init: function() {
+          unityShowBanner('1) Проверяем телеграм ли');
           if (typeof Telegram !== 'undefined') {
             try {
+              unityShowBanner('2) Телеграмм!!');
               Telegram.WebApp.ready();
               Telegram.WebApp.expand();
               console.log("Telegram WebApp initialized");
             } catch (e) {
+              unityShowBanner('2.5) Не телеграмм');
               console.error("Telegram init error:", e);
             }
           }
@@ -163,6 +166,7 @@
         handleScore: function(score) {
           if (typeof Telegram !== 'undefined' && Telegram.WebApp.sendData) {
             try {
+              unityShowBanner(`3) Отправляем данные! score: ${score}`);
               Telegram.WebApp.sendData(JSON.stringify({
                 action: 'set_score',
                 score: score,
@@ -180,10 +184,11 @@
       };
 
       // Global function for Unity
-      window.SendToTelegram = function(score) {
+    window.SendToTelegram = function(score) {
         console.log("Unity -> JS:", score);
+        unityShowBanner(`4) window.SendToTelegram! score: ${window.TelegramGameProxy.handleScore(score)? true: false}`);
         if (!window.TelegramGameProxy.handleScore(score)) {
-          console.warn("Failed to send score, fallback to localStorage");
+          console.log("Failed to send score, fallback to localStorage");
           localStorage.setItem('lastScore', score);
         }
       };
